@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Pomodoro Timer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CSS Variables for Theming --- */
+        :root {
+            --font-primary: 'Poppins', sans-serif;
+            --font-logo: 'Pacifico', cursive;
+
+            /* Light Mode Colors */
+            --color-bg: #f4f7fa;
+            --color-surface: #ffffff;
+            --color-text-primary: #1a202c;
+            --color-text-secondary: #718096;
+            --color-accent: #e53e3e; /* Red */
+            --color-accent-dark: #c53030;
+            --color-border: #e2e8f0;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+            /* Footer Colors */
+            --footer-bg: #1a202c;
+            --footer-text: #a0aec0;
+            --footer-heading: #edf2f7;
+
+            /* Dark Mode Toggle Colors */
+            --toggle-bg-off: #e53e3e; /* Red for "off" */
+            --toggle-bg-on: #ffffff;  /* White for "on" */
+        }
+
+        body.dark-mode {
+            /* Dark Mode Colors */
+            --color-bg: #1a202c;
+            --color-surface: #2d3748;
+            --color-text-primary: #edf2f7;
+            --color-text-secondary: #a0aec0;
+            --color-accent: #f56565; /* Lighter Red */
+            --color-accent-dark: #e53e3e;
+            --color-border: #4a5568;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.25);
+            
+            /* Dark Mode Footer Colors */
+            --footer-bg: #0f131a; /* Even darker for contrast */
+        }
+
+        /* --- General Styles --- */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-primary);
+            background-color: var(--color-bg);
+            color: var(--color-text-primary);
+            display: flex;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 240px; height: 100vh; background-color: var(--color-surface);
+            border-right: 1px solid var(--color-border); padding: 2rem 1.5rem;
+            display: flex; flex-direction: column; box-shadow: var(--shadow);
+            position: fixed; transition: background-color 0.3s, border-color 0.3s; z-index: 10;
+        }
+        .sidebar .logo {
+            font-family: var(--font-logo); font-size: 2.5rem; color: var(--color-accent);
+            text-align: center; margin-bottom: 3rem;
+        }
+        .sidebar ul { list-style: none; }
+        .sidebar ul li a {
+            display: block; padding: 1rem; margin-bottom: 0.5rem; text-decoration: none;
+            color: var(--color-text-secondary); font-weight: 600; border-radius: 8px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .sidebar ul li a:hover, .sidebar ul li a.active { background-color: var(--color-accent); color: white; }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            flex-grow: 1; margin-left: 240px; /* Same as sidebar width */
+            padding: 2rem 3rem; display: flex; flex-direction: column; min-height: 100vh;
+        }
+        main, section { flex-shrink: 0; }
+        .page-content { flex-grow: 1; }
+
+        header { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 2rem; }
+        /* --- Dark Mode Toggle Switch --- */
+        .dark-mode-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .dark-mode-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--toggle-bg-off); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--toggle-bg-on); }
+        input:checked + .slider:before { transform: translateX(26px); background-color: var(--color-accent); }
+
+        /* --- Generic Section Styles --- */
+        .content-section { padding-top: 4rem; margin-top: -2rem; }
+        .content-block { background-color: var(--color-surface); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); transition: background-color 0.3s; margin-bottom: 2rem; }
+        .content-block h2 { color: var(--color-text-primary); margin-bottom: 1.5rem; border-bottom: 2px solid var(--color-border); padding-bottom: 1rem; }
+
+        /* --- Timer Section --- */
+        #timer-display { font-size: 10rem; font-weight: 700; text-align: center; color: var(--color-text-primary); line-height: 1; margin-bottom: 2rem; }
+        .timer-controls { max-width: 500px; margin: 0 auto; }
+        .time-setter { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .time-setter label { font-weight: 600; color: var(--color-text-secondary); }
+        #time-input, #time-unit-select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--color-border); background-color: var(--color-bg); color: var(--color-text-primary); font-size: 1rem; font-weight: 600; }
+        #time-input { width: 100px; text-align: center; }
+        #time-input:focus, #time-unit-select:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.3); }
+        .buttons { text-align: center; }
+        .buttons button { font-family: var(--font-primary); font-size: 1.1rem; font-weight: 600; padding: 0.8rem 2rem; margin: 0 0.5rem; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, transform 0.1s; }
+        .buttons button:active { transform: translateY(1px); }
+        #start-pause-btn { background-color: var(--color-accent); color: white; }
+        #start-pause-btn:hover { background-color: var(--color-accent-dark); }
+        #reset-btn { background-color: var(--color-text-secondary); color: white; }
+        #reset-btn:hover { background-color: #4a5568; }
+
+        /* --- Statistics Section --- */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .stats-container p { color: var(--color-text-secondary); }
+        .stat-item { display: flex; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--color-border); }
+        .stat-item:last-child { border-bottom: none; }
+        .stat-item .date { font-weight: 600; color: var(--color-text-primary); }
+        .stat-item .duration { color: var(--color-text-secondary); }
+        .chart-container { height: 250px; display: flex; gap: 10px; align-items: flex-end; justify-content: center; border-bottom: 2px solid var(--color-border); padding-bottom: 10px; }
+        .chart-bar-wrapper { flex: 1; max-width: 60px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .chart-bar { width: 100%; background-color: var(--color-accent); border-radius: 4px 4px 0 0; transition: height 0.5s ease-out; }
+        .bar-label { margin-top: 8px; font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); }
+        
+        /* --- Benefits Section --- */
+        #benefits-section p { font-size: 1.1rem; line-height: 1.8; color: var(--color-text-secondary); margin-bottom: 1rem; }
+
+        /* --- NEW FOOTER STYLES --- */
+        .site-footer {
+            background-color: var(--footer-bg);
+            color: var(--footer-text);
+            padding: 3rem 2rem;
+            margin-top: 4rem; /* Pushes footer down */
+            transition: background-color 0.3s;
+        }
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .footer-brand {
+            flex-basis: 25%;
+        }
+        .footer-brand .logo {
+            font-family: var(--font-logo);
+            font-size: 2.5rem;
+            color: var(--color-accent);
+            margin-bottom: 1rem;
+        }
+        .footer-brand p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .footer-links {
+            display: flex;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+        .footer-column h4 {
+            color: var(--footer-heading);
+            text-transform: uppercase;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+        }
+        .footer-column ul {
+            list-style: none;
+        }
+        .footer-column ul li {
+            margin-bottom: 0.75rem;
+        }
+        .footer-column ul a {
+            text-decoration: none;
+            color: var(--footer-text);
+            transition: color 0.2s;
+        }
+        .footer-column ul a:hover {
+            color: var(--color-accent);
+        }
+        .footer-bottom {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.9rem;
+        }
+        
+        /* --- Responsive Design --- */
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .footer-content { flex-direction: column; align-items: center; text-align: center; }
+            .footer-links { justify-content: center; }
+        }
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; justify-content: space-between; padding: 1rem; }
+            .sidebar .logo { margin-bottom: 0; font-size: 2rem; }
+            .sidebar ul { display: flex; }
+            .sidebar ul li a { padding: 0.5rem 1rem; }
+            .main-content { margin-left: 0; padding: 1rem; }
+            #timer-display { font-size: 6rem; }
+            .buttons button { padding: 0.8rem 1.2rem; }
+            .content-section { padding-top: 2rem; margin-top: -1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left Sidebar -->
+    <nav class="sidebar">
+        <h1 class="logo">Pomodoro</h1>
+        <ul>
+            <li><a href="#timer-section" class="nav-link active">Timer</a></li>
+            <li><a href="#stats-section" class="nav-link">Statistics</a></li>
+            <li><a href="#benefits-section" class="nav-link">Benefits</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-content">
+            <!-- Header with Dark Mode Toggle -->
+            <header>
+                <label class="dark-mode-switch">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="slider"></span>
+                </label>
+            </header>
+
+            <!-- Timer Section -->
+            <main id="timer-section" class="content-section">
+                <div id="timer-display">25:00</div>
+                <div class="timer-controls content-block">
+                    <div class="time-setter">
+                        <label for="time-input">Set Time:</label>
+                        <input type="number" id="time-input" value="25" min="1">
+                        <select id="time-unit-select">
+                            <option value="minutes" selected>Minutes</option>
+                            <option value="seconds">Seconds</option>
+                            <option value="hours">Hours</option>
+                        </select>
+                    </div>
+                    <div class="buttons">
+                        <button id="start-pause-btn">Start</button>
+                        <button id="reset-btn">Reset</button>
+                    </div>
+                </div>
+            </main>
+            
+            <!-- Statistics Section -->
+            <section id="stats-section" class="content-section">
+                <div class="content-block">
+                    <h2>Activity Overview</h2>
+                    <div class="stats-grid">
+                        <div>
+                            <h3>Recent Sessions</h3>
+                            <div id="stats-container">
+                               <p>No completed sessions yet. Finish a Pomodoro to see it here!</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3>Session Graph (Last 7)</h3>
+                            <div id="stats-chart-container" class="chart-container">
+                               <!-- Chart bars will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Benefits Section -->
+            <section id="benefits-section" class="content-section">
+                <div class="content-block">
+                    <h2>The Power of the Pomodoro Technique</h2>
+                    <p>The Pomodoro Technique is a time management method that uses a timer to break work into intervals, traditionally 25 minutes in length, separated by short breaks. Each interval is known as a pomodoro. Here are some of its key benefits:</p>
+                    <p><strong>Improves Focus:</strong> By dedicating a set amount of time to a single task, you train your brain to resist distractions and maintain deep concentration.</p>
+                    <p><strong>Reduces Burnout:</strong> Regular, short breaks are built into the system, allowing your mind to rest and recharge. This prevents mental fatigue and keeps you motivated throughout the day.</p>
+                    <p><strong>Increases Accountability:</strong> The timer creates a sense of urgency and helps you track exactly where your time is going, making it easier to plan your work and stay on schedule.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- NEW FOOTER -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">Pomodoro</div>
+                    <p>A simple, modern tool to help you focus and boost productivity.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Navigation</h4>
+                        <ul>
+                            <li><a href="#timer-section">Timer</a></li>
+                            <li><a href="#stats-section">Statistics</a></li>
+                            <li><a href="#benefits-section">Benefits</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="https://en.wikipedia.org/wiki/Pomodoro_Technique" target="_blank" rel="noopener noreferrer">About the Technique</a></li>
+                            <li><a href="https://francescocirillo.com/" target="_blank" rel="noopener noreferrer">Creator's Site</a></li>
+                            <li><a href="#">Productivity Tips</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Connect</h4>
+                        <ul>
+                            <li><a href="#">GitHub</a></li>
+                            <li><a href="#">Twitter</a></li>
+                            <li><a href="#">Contact</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                Copyright © <span id="copyright-year"></span> Your Name or Brand. All rights reserved.
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const timerDisplay = document.getElementById('timer-display');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const timeInput = document.getElementById('time-input');
+            const timeUnitSelect = document.getElementById('time-unit-select');
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const statsContainer = document.getElementById('stats-container');
+            const chartContainer = document.getElementById('stats-chart-container');
+            const copyrightYear = document.getElementById('copyright-year');
+
+            // --- Timer State ---
+            let timerInterval = null;
+            let totalSeconds = 25 * 60;
+            let secondsRemaining = totalSeconds;
+            let isPaused = true;
+            let initialDurationText = "25-minute";
+
+            const alarmSound = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
+
+            const formatDurationText = (value, unit) => `${value} ${unit.slice(0, -1)}`;
+
+            const updateDisplay = () => {
+                const hours = Math.floor(secondsRemaining / 3600);
+                const minutes = Math.floor((secondsRemaining % 3600) / 60);
+                const seconds = secondsRemaining % 60;
+                timerDisplay.textContent = (totalSeconds >= 3600)
+                    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                document.title = `${timerDisplay.textContent} - Pomodoro Timer`;
+            };
+
+            const startTimer = () => {
+                if (!isPaused) return;
+                isPaused = false;
+                startPauseBtn.textContent = 'Pause';
+                timeInput.disabled = true;
+                timeUnitSelect.disabled = true;
+                timerInterval = setInterval(() => {
+                    secondsRemaining--;
+                    updateDisplay();
+                    if (secondsRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        alarmSound.play();
+                        logCompletedSession(totalSeconds);
+                        alert(`Congratulations! You've completed your ${initialDurationText} session.`);
+                        resetTimer();
+                    }
+                }, 1000);
+            };
+            
+            const pauseTimer = () => {
+                isPaused = true;
+                startPauseBtn.textContent = 'Resume';
+                clearInterval(timerInterval);
+            };
+
+            const resetTimer = () => {
+                clearInterval(timerInterval);
+                isPaused = true;
+                const value = parseInt(timeInput.value, 10);
+                const unit = timeUnitSelect.value;
+                initialDurationText = formatDurationText(value, unit);
+                switch (unit) {
+                    case 'hours': totalSeconds = value * 3600; break;
+                    case 'seconds': totalSeconds = value; break;
+                    default: totalSeconds = value * 60; break;
+                }
+                secondsRemaining = totalSeconds;
+                startPauseBtn.textContent = 'Start';
+                timeInput.disabled = false;
+                timeUnitSelect.disabled = false;
+                updateDisplay();
+            };
+
+            startPauseBtn.addEventListener('click', () => isPaused ? startTimer() : pauseTimer());
+            resetBtn.addEventListener('click', resetTimer);
+            timeInput.addEventListener('change', resetTimer);
+            timeUnitSelect.addEventListener('change', resetTimer);
+            
+            const applyTheme = (theme) => {
+                document.body.classList.toggle('dark-mode', theme === 'dark');
+                darkModeToggle.checked = theme === 'dark';
+            };
+            darkModeToggle.addEventListener('change', () => {
+                const theme = darkModeToggle.checked ? 'dark' : 'light';
+                localStorage.setItem('pomodoro-theme', theme);
+                applyTheme(theme);
+            });
+
+            const getStats = () => JSON.parse(localStorage.getItem('pomodoro-stats')) || [];
+            const saveStats = (stats) => localStorage.setItem('pomodoro-stats', JSON.stringify(stats));
+
+            const renderStats = () => {
+                const stats = getStats();
+                statsContainer.innerHTML = (stats.length === 0)
+                    ? '<p>No completed sessions yet. Finish a Pomodoro to see it here!</p>'
+                    : [...stats].reverse().slice(0, 5).map(session => {
+                        const date = new Date(session.date);
+                        const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        return `<div class="stat-item">
+                                    <span class="date">${formattedDate}</span>
+                                    <span class="duration">${Math.round(session.duration / 60)} min session</span>
+                                </div>`;
+                    }).join('');
+            };
+
+            const renderChart = () => {
+                const stats = getStats();
+                chartContainer.innerHTML = '';
+                const sessionsToShow = stats.slice(-7);
+                if (sessionsToShow.length === 0) return;
+                const maxDuration = Math.max(...sessionsToShow.map(s => s.duration), 1);
+                sessionsToShow.forEach(session => {
+                    const barHeight = (session.duration / maxDuration) * 100;
+                    const durationInMinutes = Math.round(session.duration / 60);
+                    chartContainer.innerHTML += `
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar" style="height: ${barHeight}%;"></div>
+                            <span class="bar-label">${durationInMinutes}m</span>
+                        </div>`;
+                });
+            };
+
+            const logCompletedSession = (durationInSeconds) => {
+                const stats = getStats();
+                stats.push({ date: new Date().toISOString(), duration: durationInSeconds });
+                saveStats(stats);
+                renderStats();
+                renderChart();
+            };
+
+            const init = () => {
+                copyrightYear.textContent = new Date().getFullYear();
+                const savedTheme = localStorage.getItem('pomodoro-theme') || 'light';
+                applyTheme(savedTheme);
+                resetTimer();
+                renderStats();
+                renderChart();
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>
